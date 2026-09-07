@@ -133,7 +133,10 @@ dmypy.json
 .idea
 
 build/
-# PostgreSQL build tree: sources, tarballs and objects are ignored, the Makefile is tracked
+# PostgreSQL build tree: sources, tarballs and objects are ignored; the build
+# scripts are tracked. Anything new under pgbuild/ must be listed here or it
+# silently stays out of the repo (it happened twice on 2026-09-07).
 pgbuild/*
 !pgbuild/Makefile
+!pgbuild/prepare.sh
 src/embedded_postgres/pginstall
