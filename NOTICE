@@ -1,0 +1,10 @@
+embedded-postgres
+Copyright 2026 Valeriy V. Pushkar
+
+This product is derived from pgserver (https://github.com/orm011/pgserver),
+licensed under the Apache License, Version 2.0. Files inherited from pgserver
+have been modified in this project.
+
+This product bundles binaries of the PostgreSQL Database Management System
+and of the pgvector extension, both built from source and distributed under
+the PostgreSQL License. See THIRD_PARTY_NOTICES.md for the full texts.
