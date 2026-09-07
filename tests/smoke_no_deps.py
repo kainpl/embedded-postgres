@@ -30,6 +30,13 @@ def main() -> int:
             print("pgvector did not load", file=sys.stderr)
             return 1
         print(server.psql("create extension if not exists pg_stat_statements;").strip())
+        # The timezone database must be in the wheel: without it the server
+        # knows only GMT and refuses "timezone = 'UTC'" (18.6.0/18.6.1 on Windows).
+        kyiv = server.psql("set timezone to 'Europe/Kyiv'; select now() at time zone 'UTC' is not null;")
+        print("timezone database:", kyiv.strip())
+        if "t" not in kyiv:
+            print("timezone database missing", file=sys.stderr)
+            return 1
     print("smoke OK")
     return 0
 

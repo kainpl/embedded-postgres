@@ -2,7 +2,7 @@
 name = "embedded-postgres"
 # Versioning mirrors the bundled PostgreSQL release: MAJOR.MINOR of PostgreSQL,
 # third number is this package's own counter for a given PostgreSQL version.
-version = "18.6.1"
+version = "18.6.2"
 description = "PostgreSQL server binaries as a pip-installable wheel, with a small Python layer to init, start and stop it"
 readme = "README.md"
 requires-python = ">=3.9"

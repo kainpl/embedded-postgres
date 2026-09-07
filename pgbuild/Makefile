@@ -4,7 +4,13 @@ SHELL := /bin/bash
 # "clang: error: unable to execute command: posix_spawn failed: Resource
 # temporarily unavailable". nproc on Linux, sysctl on macOS, 4 elsewhere.
 JOBS := $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
-INSTALL_PREFIX := $(shell pwd)/../src/embedded_postgres/pginstall/
+# On Windows (Git Bash) `pwd` is a POSIX path such as /d/a/...; PostgreSQL's own
+# recipes hand the prefix to native tools — zic among them — which read it as a
+# drive-relative path and wrote the timezone database beside the tree, so the
+# 18.6.0/18.6.1 Windows wheels shipped without share/timezone. Use the native
+# form (D:/a/...) wherever cygpath exists; autoconf accepts a drive-letter prefix.
+PWD_NATIVE := $(shell cygpath -m "$$(pwd)" 2>/dev/null || pwd)
+INSTALL_PREFIX := $(PWD_NATIVE)/../src/embedded_postgres/pginstall/
 BUILD := $(shell pwd)/pgbuild/
 
 .PHONY: all
@@ -39,6 +45,7 @@ $(POSTGRES_BLD)/src/bin/initdb/initdb: $(POSTGRES_BLD)/config.status
 $(INSTALL_PREFIX)/bin/postgres: $(POSTGRES_BLD)/config.status
 	mkdir -p $(INSTALL_PREFIX)
 	unset MAKELEVEL && unset MAKEFLAGS && unset MFLAGS && $(MAKE) -C $(POSTGRES_BLD) -j$(JOBS) install-world-bin
+	@test -f '$(INSTALL_PREFIX)/share/timezone/UTC' || { echo 'timezone database missing from $(INSTALL_PREFIX)/share — zic wrote elsewhere'; exit 1; }
 
 .PHONY: postgres
 postgres: $(INSTALL_PREFIX)/bin/postgres

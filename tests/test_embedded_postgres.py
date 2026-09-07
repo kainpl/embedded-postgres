@@ -252,6 +252,18 @@ def tmp_postgres():
     with embedded_postgres.get_server(tmp_pg_data, cleanup_mode='delete') as pg:
         yield pg
 
+def test_timezone_database(tmp_postgres):
+    """share/timezone ships in the wheel: a named zone is accepted, UTC too.
+
+    The 18.6.0/18.6.1 Windows wheels had no timezone database — the server
+    knew only GMT and refused ``timezone = 'UTC'`` outright.
+    """
+    out = tmp_postgres.psql("set timezone to 'Europe/Kyiv'; show timezone;")
+    assert "Europe/Kyiv" in out
+    out = tmp_postgres.psql("set timezone to 'UTC'; show timezone;")
+    assert "UTC" in out
+
+
 def test_pgvector(tmp_postgres):
     ret = tmp_postgres.psql("CREATE EXTENSION vector;")
     assert ret.strip() == "CREATE EXTENSION"
