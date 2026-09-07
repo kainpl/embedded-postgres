@@ -49,7 +49,7 @@ testpaths = ["tests"]
 # One wheel per platform: the tag is py3-none-<platform> (see setup.py), so a
 # single CPython is enough to build and test it.
 build = "cp312-*"
-skip = "pp* *-musllinux*"
+skip = "*-musllinux*"
 before-all = "make"
 test-extras = "test"
 test-command = "bash -x {project}/cibuildwheel_test.bash {project}"

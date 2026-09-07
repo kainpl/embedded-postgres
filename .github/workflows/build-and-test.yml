@@ -97,10 +97,18 @@ jobs:
       - name: Build wheels
         env:
           CIBW_ARCHS: ${{ matrix.arch }}
+          # Windows: cibuildwheel puts its test venv under the user's Temp.
+          # PostgreSQL's tools drop Administrator rights (restricted token)
+          # before doing anything, and on the runner that folder is readable
+          # only through the Administrators group — initdb then cannot even
+          # stat its own binary ("invalid binary ...: Permission denied").
+          # The runner's own temp on D: carries explicit user/Users ACEs.
+          TEMP: ${{ startsWith(matrix.os, 'windows') && runner.temp || '' }}
+          TMP: ${{ startsWith(matrix.os, 'windows') && runner.temp || '' }}
         run: python -m cibuildwheel --output-dir wheelhouse
 
-      # Windows: the in-cibuildwheel tests are skipped (see pyproject), so probe
-      # the built wheel here instead and print what the runtime layer sees.
+      # Windows: the same wheel from two locations — the runner temp on D: and
+      # the user's profile Temp on C: — to pin the "Permission denied" on ACLs.
       - name: Smoke-test the wheel (Windows)
         if: runner.os == 'Windows'
         continue-on-error: true
@@ -118,10 +126,17 @@ jobs:
           "$BIN/postgres.exe" --version || echo "postgres --version FAILED ($?)"
           "$BIN/pg_ctl.exe" --version || echo "pg_ctl --version FAILED ($?)"
           mkdir -p "$RUNNER_TEMP/pgdata-smoke"
-          "$BIN/initdb.exe" -D "$RUNNER_TEMP/pgdata-smoke" --auth=trust -U postgres -E utf8 || echo "initdb FAILED ($?)"
-          # Same binaries copied outside site-packages: does the location matter?
-          mkdir -p "$RUNNER_TEMP/pgcopy" && cp -r "$BIN/.." "$RUNNER_TEMP/pgcopy/" && ls "$RUNNER_TEMP/pgcopy"
-          "$RUNNER_TEMP/pgcopy/pginstall/bin/initdb.exe" --version || echo "copied initdb --version FAILED ($?)"
+          "$BIN/initdb.exe" -D "$RUNNER_TEMP/pgdata-smoke" --auth=trust -U postgres -E utf8 >/dev/null && echo "initdb on D: OK" || echo "initdb on D: FAILED ($?)"
+          # --- the same wheel from the user's profile Temp on C: ---
+          UTMP=$(cygpath -u "$LOCALAPPDATA")/Temp
+          echo "profile temp: $UTMP"; icacls "$LOCALAPPDATA\Temp" || true
+          python -m venv "$UTMP/ep-smoke"
+          "$UTMP/ep-smoke/Scripts/python" -m pip install --quiet wheelhouse/*.whl
+          BIN2=$("$UTMP/ep-smoke/Scripts/python" -c "import embedded_postgres._commands as c; print(c.POSTGRES_BIN_PATH)")
+          icacls "$BIN2\initdb.exe" || true
+          "$BIN2/initdb.exe" --version && echo "initdb --version from C: Temp OK" || echo "initdb --version from C: Temp FAILED ($?)"
+          # and D:-located binaries writing a cluster into C: Temp — is it the binary's location or the data dir?
+          "$BIN/initdb.exe" -D "$UTMP/pgdata-c" --auth=trust -U postgres -E utf8 >/dev/null && echo "D: binary, C: datadir OK" || echo "D: binary, C: datadir FAILED ($?)"
 
       - uses: actions/upload-artifact@v7
         with:
