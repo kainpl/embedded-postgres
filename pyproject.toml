@@ -58,6 +58,14 @@ test-command = "bash -x {project}/cibuildwheel_test.bash {project}"
 # Inside the manylinux container: install bison/flex/perl before building.
 before-all = "bash pgbuild/prepare.sh && make"
 
+# armv7l (32-bit Raspberry Pi and friends): cibuildwheel calls it experimental;
+# the test extras have no wheels there, so run the dependency-free smoke test
+# instead of the pytest suite.
+[[tool.cibuildwheel.overrides]]
+select = "*-manylinux_armv7l"
+test-extras = []
+test-command = "python {project}/tests/smoke_no_deps.py"
+
 [build-system]
 requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"

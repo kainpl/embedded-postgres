@@ -31,6 +31,11 @@ jobs:
           - os: ubuntu-24.04-arm
             arch: aarch64
             deployment-target: ""
+          # 32-bit ARM built natively on the arm64 runner (the kernel runs
+          # 32-bit containers without emulation). Experimental in cibuildwheel.
+          - os: ubuntu-24.04-arm
+            arch: armv7l
+            deployment-target: ""
           - os: macos-latest
             arch: arm64
             deployment-target: "11.0"
