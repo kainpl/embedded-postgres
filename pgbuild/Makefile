@@ -46,6 +46,11 @@ $(INSTALL_PREFIX)/bin/postgres: $(POSTGRES_BLD)/config.status
 	mkdir -p $(INSTALL_PREFIX)
 	unset MAKELEVEL && unset MAKEFLAGS && unset MFLAGS && $(MAKE) -C $(POSTGRES_BLD) -j$(JOBS) install-world-bin
 	@test -f '$(INSTALL_PREFIX)/share/timezone/UTC' || { echo 'timezone database missing from $(INSTALL_PREFIX)/share — zic wrote elsewhere'; exit 1; }
+	# Windows (MinGW): postgres.exe imports libwinpthread-1.dll from the compiler's
+	# runtime, which no user has on PATH (18.6.0–18.6.2 died with 0xC0000135,
+	# STATUS_DLL_NOT_FOUND, the moment initdb ran "postgres -V" outside Git Bash).
+	# Ship every MinGW runtime DLL the binaries could need next to them.
+	@if [ "$$(uname -o 2>/dev/null)" = "Msys" ] || [ "$$(uname -s | cut -c1-5)" = "MINGW" ]; then 		gccdir=$$(dirname "$$(command -v gcc)"); 		for dll in libwinpthread-1.dll libgcc_s_seh-1.dll libstdc++-6.dll zlib1.dll; do 			[ -f "$$gccdir/$$dll" ] && cp -v "$$gccdir/$$dll" '$(INSTALL_PREFIX)/bin/'; 		done; true; 	fi
 
 .PHONY: postgres
 postgres: $(INSTALL_PREFIX)/bin/postgres

@@ -252,6 +252,20 @@ def tmp_postgres():
     with embedded_postgres.get_server(tmp_pg_data, cleanup_mode='delete') as pg:
         yield pg
 
+@pytest.mark.skipif(platform.system() != "Windows", reason="Windows DLL resolution")
+def test_windows_binaries_need_nothing_from_path():
+    """Every shipped executable must start with a bare PATH: the MinGW runtime
+    DLLs travel in bin/ (18.6.0–18.6.2 lacked libwinpthread-1.dll and died
+    with 0xC0000135 outside Git Bash)."""
+    import embedded_postgres._commands as commands
+
+    bin_dir = Path(commands.POSTGRES_BIN_PATH)
+    bare = {"PATH": str(Path(os.environ["SYSTEMROOT"]) / "System32"), "SYSTEMROOT": os.environ["SYSTEMROOT"]}
+    for exe in ("postgres.exe", "initdb.exe", "pg_ctl.exe", "psql.exe", "pg_isready.exe", "createdb.exe"):
+        result = subprocess.run([str(bin_dir / exe), "--version"], env=bare, capture_output=True, text=True, timeout=30)
+        assert result.returncode == 0, f"{exe}: exit {result.returncode:#x}, stderr={result.stderr!r}"
+
+
 def test_timezone_database(tmp_postgres):
     """share/timezone ships in the wheel: a named zone is accepted, UTC too.
 

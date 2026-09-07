@@ -7,6 +7,7 @@ the package's own API, queries it through the bundled psql, loads pgvector,
 and stops it. Exits non-zero on any failure.
 """
 
+import os
 import sys
 import tempfile
 
@@ -14,6 +15,19 @@ import embedded_postgres
 
 
 def main() -> int:
+    if os.name == "nt":
+        # Every executable must start with a bare PATH (MinGW runtime DLLs ship in bin/).
+        import subprocess
+
+        import embedded_postgres._commands as commands
+
+        bare = {"PATH": os.path.join(os.environ["SYSTEMROOT"], "System32"), "SYSTEMROOT": os.environ["SYSTEMROOT"]}
+        for exe in ("postgres.exe", "initdb.exe", "pg_ctl.exe"):
+            r = subprocess.run([os.path.join(commands.POSTGRES_BIN_PATH, exe), "--version"], env=bare, capture_output=True)
+            if r.returncode != 0:
+                print(f"{exe} does not start with a bare PATH: {r.returncode:#x}", file=sys.stderr)
+                return 1
+        print("bare-PATH start: OK")
     pgdata = tempfile.mkdtemp(prefix="embedded-postgres-smoke-")
     with embedded_postgres.get_server(pgdata) as server:
         version = server.psql("select version();")
