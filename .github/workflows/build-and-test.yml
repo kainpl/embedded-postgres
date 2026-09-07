@@ -7,6 +7,11 @@ on:
   pull_request:
   workflow_dispatch:
 
+# A push supersedes the run before it: only the newest code is worth the runners.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build_wheels:
     name: ${{ matrix.os }} / ${{ matrix.arch }}
@@ -39,9 +44,9 @@ jobs:
       BISON: ${{ startsWith(matrix.os, 'windows') && 'win_bison' || '' }}
       FLEX: ${{ startsWith(matrix.os, 'windows') && 'win_flex' || '' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
 
@@ -68,7 +73,7 @@ jobs:
       - name: Restore PostgreSQL build from cache
         if: runner.os != 'Linux'
         id: restore-postgres
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: |
             pgbuild
@@ -82,7 +87,7 @@ jobs:
 
       - name: Save PostgreSQL build to cache
         if: runner.os != 'Linux' && steps.restore-postgres.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: |
             pgbuild
@@ -118,7 +123,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/pgcopy" && cp -r "$BIN/.." "$RUNNER_TEMP/pgcopy/" && ls "$RUNNER_TEMP/pgcopy"
           "$RUNNER_TEMP/pgcopy/pginstall/bin/initdb.exe" --version || echo "copied initdb --version FAILED ($?)"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: wheels-${{ matrix.os }}-${{ matrix.arch }}
           path: wheelhouse/*.whl
@@ -132,7 +137,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: wheels-*
           path: dist/

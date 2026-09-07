@@ -23,8 +23,11 @@ PostgreSQL 16.2 in mid-2024. The goals that justify a separate project:
 - **one wheel per platform** (`py3-none-<platform>`) instead of one per Python version;
 - **contrib** modules such as `pg_stat_statements` shipped alongside `pgvector`.
 
-Until the first release is tagged, wheels are only available as workflow
-artifacts from the GitHub Actions runs.
+Current state (2026-09-07): PostgreSQL 18.6 + pgvector 0.8.6 build green on
+all five targets — `manylinux_2_28` x86_64 and aarch64, `macosx_11_0` arm64
+and x86_64, `win_amd64` — 12–17 MB per wheel. Until the first release is
+tagged, wheels are only available as workflow artifacts from the GitHub
+Actions runs.
 
 ## Versioning
 
