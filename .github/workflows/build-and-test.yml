@@ -4,7 +4,11 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
+    # Documentation-only pushes do not need a 25-minute build on five runners.
+    # (Path filters are not applied to tag pushes, so releases always build.)
+    paths-ignore: ["**.md", "NOTICE", "LICENSE"]
   pull_request:
+    paths-ignore: ["**.md", "NOTICE", "LICENSE"]
   workflow_dispatch:
 
 # A push supersedes the run before it: only the newest code is worth the runners.
