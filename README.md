@@ -29,6 +29,26 @@ and x86_64, `win_amd64` — 12–17 MB per wheel. Until the first release is
 tagged, wheels are only available as workflow artifacts from the GitHub
 Actions runs.
 
+## Windows and Administrator accounts
+
+PostgreSQL's tools refuse to run with Administrator rights: `initdb`,
+`pg_ctl` and `postgres` re-launch themselves with a *restricted token* in which
+the Administrators group is deny-only. Any directory that is reachable only
+through that group is then invisible to them — including the binaries
+themselves. Since CPython 3.12.4, `tempfile.mkdtemp()` on Windows creates
+exactly such directories (SYSTEM, Administrators and the owner; for an
+administrator the owner *is* Administrators). Symptom:
+
+```
+invalid binary "...\embedded_postgres\pginstallin\initdb.exe": Permission denied
+initdb: error: program "postgres" is needed by initdb but was not found in the same directory as "initdb"
+```
+
+If you run as Administrator, keep the package and the data directory out of
+`mkdtemp()`-created trees, or grant your user an explicit ACE
+(`icacls <dir> /grant "%USERNAME%:(OI)(CI)F" /T`). Regular user accounts and
+directories created with `os.mkdir()` / `python -m venv` are unaffected.
+
 ## Versioning
 
 The package version mirrors the bundled PostgreSQL release: `MAJOR.MINOR` are
