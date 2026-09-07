@@ -19,15 +19,16 @@ Early. This project started on 2026-09-07 as a fork of
 PostgreSQL 16.2 in mid-2024. The goals that justify a separate project:
 
 - **current PostgreSQL** (18.6 today), with minor releases picked up as they ship;
-- **Linux aarch64** (and later armv7l) wheels next to x86_64, macOS and Windows;
+- **Linux aarch64 and armv7l** wheels next to x86_64, macOS and Windows;
 - **one wheel per platform** (`py3-none-<platform>`) instead of one per Python version;
 - **contrib** modules such as `pg_stat_statements` shipped alongside `pgvector`.
 
 Current state (2026-09-07): PostgreSQL 18.6 + pgvector 0.8.6 build and pass
-the test suite on all five targets — `manylinux_2_28` x86_64 and aarch64,
-`macosx_11_0` arm64 and x86_64, `win_amd64` — 12–17 MB per wheel. Until the
-first release is tagged, wheels are only available as workflow artifacts from
-the GitHub Actions runs.
+the test suite on six targets — `manylinux_2_28` x86_64 and aarch64,
+`manylinux_2_31` armv7l (32-bit Raspberry Pi OS bullseye or newer; runs the
+dependency-free smoke test instead of the full suite), `macosx_11_0` arm64 and
+x86_64, `win_amd64` — 11–17 MB per wheel. Releases go to GitHub Releases and
+PyPI: `pip install embedded-postgres`.
 
 ## Windows and Administrator accounts
 
