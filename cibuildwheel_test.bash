@@ -14,9 +14,11 @@ case "$OSTYPE" in
         # Administrator rights before doing anything (restricted token), and for
         # an administrator the owner IS the Administrators group — so initdb
         # cannot even stat its own binary inside the venv. Grant the user itself.
+        # MSYS_NO_PATHCONV: Git Bash would otherwise rewrite "/grant" into
+        # "C:/Program Files/Git/grant" before icacls ever sees it.
         venv=$(python -c "import sys; print(sys.prefix)")
         echo "granting $USERNAME explicit access on $venv"
-        icacls "$venv" /grant "$USERNAME:(OI)(CI)F" /T /Q >/dev/null
+        MSYS_NO_PATHCONV=1 icacls "$venv" /grant "$USERNAME:(OI)(CI)F" /T /Q
         ;;
 esac
 
