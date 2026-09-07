@@ -51,3 +51,13 @@ Copyright (c) 2021-2026 Andrew Kane, distributed under the PostgreSQL License
 Linux wheels may carry copies of shared libraries the PostgreSQL binaries link
 against (for example zlib, <https://zlib.net/>, zlib License), placed there by
 the manylinux wheel repair step. Each such library keeps its own license.
+
+## MinGW-w64 runtime (Windows wheel)
+
+The Windows wheel carries the runtime libraries of the MinGW-w64 toolchain
+that built PostgreSQL, placed next to the executables in `bin/`:
+`libwinpthread-1.dll` (MIT / BSD-style licence of the winpthreads project),
+and, when the toolchain links them, `libgcc_s_seh-1.dll` and `libstdc++-6.dll`
+(GNU GPL v3 with the GCC Runtime Library Exception, which permits this
+redistribution) and `zlib1.dll` (zlib License). They are unmodified copies from
+<https://www.mingw-w64.org/>.
