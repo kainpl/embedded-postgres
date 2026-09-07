@@ -133,5 +133,7 @@ dmypy.json
 .idea
 
 build/
-pgbuild/
+# PostgreSQL build tree: sources, tarballs and objects are ignored, the Makefile is tracked
+pgbuild/*
+!pgbuild/Makefile
 src/embedded_postgres/pginstall
