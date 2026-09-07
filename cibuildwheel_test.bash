@@ -14,11 +14,19 @@ case "$OSTYPE" in
         # Administrator rights before doing anything (restricted token), and for
         # an administrator the owner IS the Administrators group — so initdb
         # cannot even stat its own binary inside the venv. Grant the user itself.
+        # Grant on the whole cibuildwheel run directory (the venv and the
+        # test_cwd it runs us from are siblings in it) and, belt and braces,
+        # on the current directory itself: PostgreSQL's popen() goes through
+        # cmd.exe, which refuses to start with an unreachable cwd ("The
+        # current directory is invalid.").
         # MSYS_NO_PATHCONV: Git Bash would otherwise rewrite "/grant" into
         # "C:/Program Files/Git/grant" before icacls ever sees it.
-        venv=$(python -c "import sys; print(sys.prefix)")
-        echo "granting $USERNAME explicit access on $venv"
-        MSYS_NO_PATHCONV=1 icacls "$venv" /grant "$USERNAME:(OI)(CI)F" /T /Q
+        run_dir=$(python -c "import os, sys; print(os.path.dirname(sys.prefix))")
+        cwd_win=$(cygpath -w "$PWD")
+        for d in "$run_dir" "$cwd_win"; do
+            echo "granting $USERNAME explicit access on $d"
+            MSYS_NO_PATHCONV=1 icacls "$d" /grant "$USERNAME:(OI)(CI)F" /T /Q
+        done
         ;;
 esac
 
