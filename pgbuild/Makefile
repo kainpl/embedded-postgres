@@ -1,4 +1,9 @@
 SHELL := /bin/bash
+# Parallel jobs for the PostgreSQL build. A bare `make -j` (unlimited) exhausts
+# the process limit on the macOS runners once world-bin is built:
+# "clang: error: unable to execute command: posix_spawn failed: Resource
+# temporarily unavailable". nproc on Linux, sysctl on macOS, 4 elsewhere.
+JOBS := $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 INSTALL_PREFIX := $(shell pwd)/../src/embedded_postgres/pginstall/
 BUILD := $(shell pwd)/pgbuild/
 
@@ -28,12 +33,12 @@ $(POSTGRES_BLD)/config.status: $(POSTGRES_SRC)/configure
 # https://stackoverflow.com/questions/68379786/
 # for explanation of unsetting make env variables prior to calling postgres' own make
 $(POSTGRES_BLD)/src/bin/initdb/initdb: $(POSTGRES_BLD)/config.status
-	unset MAKELEVEL && unset MAKEFLAGS && unset MFLAGS && $(MAKE) -C $(POSTGRES_BLD) -j world-bin
+	unset MAKELEVEL && unset MAKEFLAGS && unset MFLAGS && $(MAKE) -C $(POSTGRES_BLD) -j$(JOBS) world-bin
 
 ## install to INSTALL_PREFIX
 $(INSTALL_PREFIX)/bin/postgres: $(POSTGRES_BLD)/config.status
 	mkdir -p $(INSTALL_PREFIX)
-	unset MAKELEVEL && unset MAKEFLAGS && unset MFLAGS && $(MAKE) -C $(POSTGRES_BLD) -j install-world-bin
+	unset MAKELEVEL && unset MAKEFLAGS && unset MFLAGS && $(MAKE) -C $(POSTGRES_BLD) -j$(JOBS) install-world-bin
 
 .PHONY: postgres
 postgres: $(INSTALL_PREFIX)/bin/postgres
@@ -55,7 +60,7 @@ $(PGVECTOR_DIR)/Makefile: $(PGVECTOR_DIR).tar.gz
 $(INSTALL_PREFIX)/lib/vector.so: $(PGVECTOR_DIR)/Makefile $(INSTALL_PREFIX)/bin/postgres
 	unset MAKELEVEL && unset MAKEFLAGS && unset MFLAGS \
 		&& export PG_CONFIG=$(INSTALL_PREFIX)/bin/pg_config \
-		&& $(MAKE) -C $(PGVECTOR_DIR) -j \
+		&& $(MAKE) -C $(PGVECTOR_DIR) -j$(JOBS) \
 		&& $(MAKE) -C $(PGVECTOR_DIR) install
 
 .PHONY: pgvector
