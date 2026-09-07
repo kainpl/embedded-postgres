@@ -1,9 +1,36 @@
-from setuptools import setup
+"""Packaging glue.
 
-# Baseline packaging inherited from pgserver: an empty CFFI module is compiled
-# only so that setuptools produces a platform-specific (non-pure) wheel that
-# carries the PostgreSQL binaries under src/embedded_postgres/pginstall.
-# Replacing this with a py3-none-<platform> tag is a planned change.
+The wheel carries the PostgreSQL binaries under embedded_postgres/pginstall and
+no compiled Python extension, so it must be tagged as a *platform* wheel
+(``py3-none-<platform>``) rather than a pure-Python one — one wheel per
+platform, valid for every CPython version. setuptools only does that for
+distributions with extension modules, hence the two overrides below.
+"""
+
+from setuptools import Distribution, setup
+
+try:
+    from setuptools.command.bdist_wheel import bdist_wheel as _bdist_wheel
+except ImportError:  # setuptools < 70.1
+    from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
+
+
+class BinaryDistribution(Distribution):
+    def has_ext_modules(self) -> bool:  # noqa: D401 — setuptools hook
+        return True
+
+
+class bdist_wheel(_bdist_wheel):
+    def finalize_options(self) -> None:
+        super().finalize_options()
+        self.root_is_pure = False
+
+    def get_tag(self):
+        _python, _abi, plat = super().get_tag()
+        return "py3", "none", plat
+
+
 setup(
-    cffi_modules=["src/embedded_postgres/_build.py:ffibuilder"],
+    distclass=BinaryDistribution,
+    cmdclass={"bdist_wheel": bdist_wheel},
 )

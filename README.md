@@ -18,7 +18,7 @@ Early. This project started on 2026-09-07 as a fork of
 [pgserver](https://github.com/orm011/pgserver), which had stopped at
 PostgreSQL 16.2 in mid-2024. The goals that justify a separate project:
 
-- **current PostgreSQL**, with minor releases picked up as they ship;
+- **current PostgreSQL** (18.6 today), with minor releases picked up as they ship;
 - **Linux aarch64** (and later armv7l) wheels next to x86_64, macOS and Windows;
 - **one wheel per platform** (`py3-none-<platform>`) instead of one per Python version;
 - **contrib** modules such as `pg_stat_statements` shipped alongside `pgvector`.
@@ -35,10 +35,14 @@ PostgreSQL version. `18.6.0` is the first packaging of PostgreSQL 18.6.
 ## How it is built
 
 `pgbuild/Makefile` downloads the official PostgreSQL source tarball and
-`pgvector`, builds them with `configure && make`, and installs the result into
+`pgvector`, builds `world-bin` (server, client tools and contrib, no docs)
+with `configure && make`, and installs the result into
 `src/embedded_postgres/pginstall/`. `cibuildwheel` runs that build once per
 platform in CI and packages the tree into a wheel. Nothing is compiled on the
 user's machine.
+
+Configure flags: `--without-readline --without-icu`. No OpenSSL — the server
+is meant to listen on localhost or a Unix socket.
 
 ## License
 

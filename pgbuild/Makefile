@@ -6,7 +6,7 @@ BUILD := $(shell pwd)/pgbuild/
 all: pgvector postgres
 
 ### postgres
-POSTGRES_VERSION := 16.2
+POSTGRES_VERSION := 18.6
 POSTGRES_URL := https://ftp.postgresql.org/pub/source/v$(POSTGRES_VERSION)/postgresql-$(POSTGRES_VERSION).tar.gz
 POSTGRES_SRC := postgresql-$(POSTGRES_VERSION)
 POSTGRES_BLD := $(POSTGRES_SRC)
@@ -28,18 +28,18 @@ $(POSTGRES_BLD)/config.status: $(POSTGRES_SRC)/configure
 # https://stackoverflow.com/questions/68379786/
 # for explanation of unsetting make env variables prior to calling postgres' own make
 $(POSTGRES_BLD)/src/bin/initdb/initdb: $(POSTGRES_BLD)/config.status
-	unset MAKELEVEL && unset MAKEFLAGS && unset MFLAGS && $(MAKE) -C $(POSTGRES_BLD) -j
+	unset MAKELEVEL && unset MAKEFLAGS && unset MFLAGS && $(MAKE) -C $(POSTGRES_BLD) -j world-bin
 
 ## install to INSTALL_PREFIX
 $(INSTALL_PREFIX)/bin/postgres: $(POSTGRES_BLD)/config.status
 	mkdir -p $(INSTALL_PREFIX)
-	unset MAKELEVEL && unset MAKEFLAGS && unset MFLAGS && $(MAKE) -C $(POSTGRES_BLD) install
+	unset MAKELEVEL && unset MAKEFLAGS && unset MFLAGS && $(MAKE) -C $(POSTGRES_BLD) -j install-world-bin
 
 .PHONY: postgres
 postgres: $(INSTALL_PREFIX)/bin/postgres
 
 ### pgvector
-PGVECTOR_TAG := v0.6.2
+PGVECTOR_TAG := v0.8.6
 PGVECTOR_URL := https://github.com/pgvector/pgvector/archive/refs/tags/$(PGVECTOR_TAG).tar.gz
 PGVECTOR_DIR := pgvector-$(PGVECTOR_TAG)
 

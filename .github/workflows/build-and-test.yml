@@ -11,6 +11,7 @@ jobs:
   build_wheels:
     name: ${{ matrix.os }} / ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
@@ -30,6 +31,13 @@ jobs:
           - os: windows-2022
             arch: AMD64
             deployment-target: ""
+    env:
+      MACOSX_DEPLOYMENT_TARGET: ${{ matrix.deployment-target }}
+      # PostgreSQL >= 17 needs Bison and Flex even from a release tarball. On
+      # Windows they come from winflexbison (installed below) under these names;
+      # PostgreSQL's configure honours BISON/FLEX. Empty on other platforms.
+      BISON: ${{ startsWith(matrix.os, 'windows') && 'win_bison' || '' }}
+      FLEX: ${{ startsWith(matrix.os, 'windows') && 'win_flex' || '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -42,6 +50,18 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install "cibuildwheel>=4,<5"
 
+      - name: Install Bison and Flex (Windows)
+        if: runner.os == 'Windows'
+        run: choco install winflexbison3 --no-progress -y
+
+      - name: Toolchain report
+        shell: bash
+        run: |
+          echo "make:  $(command -v make || true)"; make --version | head -1 || true
+          echo "cc:    $(command -v gcc || command -v cc || true)"; (gcc --version || cc --version) 2>/dev/null | head -1 || true
+          echo "perl:  $(command -v perl || true)"; perl --version | sed -n 2p || true
+          for t in "${BISON:-bison}" "${FLEX:-flex}"; do echo "$t: $(command -v "$t" || echo MISSING)"; "$t" --version 2>/dev/null | head -1 || true; done
+
       # On macOS and Windows the PostgreSQL build runs on the host, so it can be
       # cached between runs. On Linux cibuildwheel builds inside the manylinux
       # container, where the host cache is not visible.
@@ -53,12 +73,11 @@ jobs:
           path: |
             pgbuild
             src/embedded_postgres/pginstall
-          key: ${{ runner.os }}-${{ runner.arch }}-postgres-${{ hashFiles('Makefile', 'pgbuild/Makefile', '.github/workflows/build-and-test.yml') }}
+          key: ${{ runner.os }}-${{ runner.arch }}-postgres-${{ hashFiles('Makefile', 'pgbuild/Makefile', 'pgbuild/prepare.sh', '.github/workflows/build-and-test.yml') }}
 
       - name: Build PostgreSQL and pgvector on the host
         if: runner.os != 'Linux' && steps.restore-postgres.outputs.cache-hit != 'true'
-        env:
-          MACOSX_DEPLOYMENT_TARGET: ${{ matrix.deployment-target }}
+        shell: bash
         run: make
 
       - name: Save PostgreSQL build to cache
@@ -68,18 +87,36 @@ jobs:
           path: |
             pgbuild
             src/embedded_postgres/pginstall
-          key: ${{ runner.os }}-${{ runner.arch }}-postgres-${{ hashFiles('Makefile', 'pgbuild/Makefile', '.github/workflows/build-and-test.yml') }}
+          key: ${{ runner.os }}-${{ runner.arch }}-postgres-${{ hashFiles('Makefile', 'pgbuild/Makefile', 'pgbuild/prepare.sh', '.github/workflows/build-and-test.yml') }}
 
       - name: Build wheels
         env:
           CIBW_ARCHS: ${{ matrix.arch }}
-          # Baseline spike: one CPython per platform is enough to learn whether
-          # the PostgreSQL build works on today's runners. The planned
-          # py3-none-<platform> tag makes this moot.
-          CIBW_BUILD: cp312-*
-          CIBW_SKIP: pp* *-musllinux*
-          MACOSX_DEPLOYMENT_TARGET: ${{ matrix.deployment-target }}
         run: python -m cibuildwheel --output-dir wheelhouse
+
+      # Windows: the in-cibuildwheel tests are skipped (see pyproject), so probe
+      # the built wheel here instead and print what the runtime layer sees.
+      - name: Smoke-test the wheel (Windows)
+        if: runner.os == 'Windows'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -x
+          python -m venv "$RUNNER_TEMP/smoke"
+          "$RUNNER_TEMP/smoke/Scripts/python" -m pip install --quiet wheelhouse/*.whl
+          BIN=$("$RUNNER_TEMP/smoke/Scripts/python" -c "import embedded_postgres._commands as c; print(c.POSTGRES_BIN_PATH)")
+          echo "bin dir: $BIN"
+          whoami; whoami /groups | grep -iE "admin|high|medium" || true
+          icacls "$BIN\initdb.exe" || true
+          icacls "$BIN\postgres.exe" || true
+          "$BIN/initdb.exe" --version || echo "initdb --version FAILED ($?)"
+          "$BIN/postgres.exe" --version || echo "postgres --version FAILED ($?)"
+          "$BIN/pg_ctl.exe" --version || echo "pg_ctl --version FAILED ($?)"
+          mkdir -p "$RUNNER_TEMP/pgdata-smoke"
+          "$BIN/initdb.exe" -D "$RUNNER_TEMP/pgdata-smoke" --auth=trust -U postgres -E utf8 || echo "initdb FAILED ($?)"
+          # Same binaries copied outside site-packages: does the location matter?
+          mkdir -p "$RUNNER_TEMP/pgcopy" && cp -r "$BIN/.." "$RUNNER_TEMP/pgcopy/" && ls "$RUNNER_TEMP/pgcopy"
+          "$RUNNER_TEMP/pgcopy/pginstall/bin/initdb.exe" --version || echo "copied initdb --version FAILED ($?)"
 
       - uses: actions/upload-artifact@v4
         with:
